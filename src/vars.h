@@ -4,6 +4,7 @@
 #include "WiFi.h"
 #include "ESPAsyncWebServer.h"
 #include <SPIFFS.h>
+#include <PubSubClient.h>
 
 OneWire oneWire(23);
 DallasTemperature tempSensor(&oneWire);
@@ -15,6 +16,9 @@ const int SEUIL_HAUT_NUIT = SEUIL_HAUT_JOUR - 2;
 const int SEUIL_BAS_NUIT = SEUIL_BAS_JOUR - 2;
 int SEUIL_LUMINOSITE = 1000;
 int LUMINOSITE = 0;
+const int SEUIL_INCENDIE = 30;
+bool incendie = false;
+bool LED_INCENDIE = false;
 
 char payload[512];
 StaticJsonDocument<512> jdoc;
@@ -22,10 +26,8 @@ bool GREEN_LED_STATE = false;
 bool RED_LED_STATE = false;
 bool MONITOR = true;
 
-//wifiMulti.addAP("HUAWEI-6EC2", "FGY9MLBL");
- //wifiMulti.addAP("HUAWEI-553A", "QTM06RTT");
-const char *ssid = "Baguette";
-const char *password = "petitpoucet";
+const char *ssid = "NIQUE TA MERE RIOT GAMES";
+const char *password = "petitesalope";
 
 String MONITOR_IP = "";
 String MONITOR_PORT = "1880";
@@ -34,3 +36,16 @@ int MONITOR_SP = 2;
 AsyncWebServer server(80);
 
 File file;
+char *identifier_esp = "esp_n1";
+
+
+/*===== MQTT broker/server ========*/
+const char* mqtt_server = "home.haysberg.io"; 
+
+/*===== MQTT TOPICS ===============*/
+#define TOPIC_TEMP "my/sensors/temp"
+#define TOPIC_LED  "my/sensors/led"
+#define TOPIC_JSON "json"
+
+/*===== ESP is MQTT Client =======*/
+WiFiClient espClient;           // Wifi 

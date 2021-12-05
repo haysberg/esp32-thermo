@@ -7,6 +7,9 @@
 #include "vars.h"
 #include "OTA.h"
 
+extern char *identifier_esp;
+extern PubSubClient client;
+
 void setup(void)
 {
   Serial.begin(9600);
@@ -20,23 +23,26 @@ void setup(void)
   ledcAttachPin(REDLED_PIN, 1);
   ledcSetup(1, 5000, 12);
 
+  pinMode(2, OUTPUT);
 
   if (!SPIFFS.begin(true)) {
     Serial.println("An Error has occurred while mounting SPIFFS");
     return;
   }
 
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.println("Connecting to WiFi..");
-  }
-
-  Serial.println(WiFi.localIP());
+  connect_wifi();
 
   server_init();
+  
+  // set server of our client
+  client.setServer(mqtt_server, 1883);
+  // set callback when publishes arrive for the subscribed topic
+  client.setCallback(mqtt_pubcallback); 
+  // char* monitor_topic = (identifier_esp).c_str();
+  //mqtt_pubcallback(identifier_esp);
+  client.connect("esp32", "user", "chiasse");
+  client.setBufferSize(2048);
+  mqtt_mysubscribe((char *)(identifier_esp));
 }
 
 void loop(void)
@@ -57,9 +63,26 @@ void loop(void)
     }
   }
 
+  serializeJson(jdoc, payload);
   if(MONITOR){
-    serializeJson(jdoc, payload);
     Serial.println(payload);
   }
+  
+  
+  /*--- subscribe to TOPIC_LED if not yet ! */
+  if (!client.connected()) { 
+    mqtt_mysubscribe((char *)(TOPIC_LED));
+  }
+
+  String tempString = get_temperature();
+  // Serial info
+  Serial.print("Published Temperature : "); Serial.println(tempString);
+  // MQTT Publish
+  //client.publish(TOPIC_TEMP, tempString.c_str());
+  client.publish(TOPIC_JSON, String(payload).c_str());
+
+
+  /* Process MQTT ... une fois par loop() ! */
+  client.loop();
   sleep(MONITOR_SP);
 }

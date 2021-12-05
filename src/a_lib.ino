@@ -3,6 +3,8 @@
 #include <lwip/ip_addr.h>
 #include "ArduinoJson.h"
 #include <HTTPClient.h>
+#include <WiFi.h>
+#include <WiFiMulti.h>
 
 //Les variables sont importées depuis vars.h
 extern bool GREEN_LED_STATE;
@@ -21,7 +23,13 @@ extern String MONITOR_IP;
 extern String MONITOR_PORT;
 extern int MONITOR_SP;
 
+extern const int SEUIL_INCENDIE;
+extern bool incendie;
+
+WiFiMulti wifiMulti;
 IPAddress ip;
+
+PubSubClient client(espClient); // MQTT client
 
 //Fonction pour renvoyer un string avec la température
 String get_temperature()
@@ -42,7 +50,6 @@ String get_light()
   LUMINOSITE = analogRead(A0);
   return String(LUMINOSITE);
 }
-
 
 //On renvoie l'adresse MAC
 String get_mac()
@@ -205,6 +212,15 @@ void react(void)
   }
 
   sendData(payload);
+
+  if (incendie){
+    if(LED_INCENDIE){
+      digitalWrite(2, LOW);
+    }else{
+      digitalWrite(2, HIGH);
+    }
+    LED_INCENDIE = !LED_INCENDIE;
+  }
 }
 
 //Change the state of the global variables
@@ -245,4 +261,104 @@ void act(void)
   }
 
   generate_state_json();
+
+  Serial.println(tempSensor.getTempCByIndex(0));
+  if (tempSensor.getTempCByIndex(0) > SEUIL_INCENDIE){
+    incendie = true;
+  }
+  Serial.println(incendie);
+}
+
+/*============== CALLBACK ===================*/
+void mqtt_pubcallback(char *topic,
+                      byte *message,
+                      unsigned int length)
+{
+  /* 
+   * Callback if a message is published on this topic.
+   */
+  Serial.print("Message arrived on topic : ");
+  Serial.println(topic);
+  Serial.print("=> ");
+
+  // Byte list to String and print to Serial
+  String messageTemp;
+  for (int i = 0; i < length; i++)
+  {
+    Serial.print((char)message[i]);
+    messageTemp += (char)message[i];
+  }
+  Serial.println();
+
+  // Feel free to add more if statements to control more GPIOs with MQTT
+
+  // If a message is received on the topic,
+  // you check if the message is either "on" or "off".
+  // Changes the output state according to the message
+  if (String(topic) == TOPIC_LED)
+  {
+    Serial.print("so ... changing output to ");
+    if (messageTemp == "on")
+    {
+      Serial.println("on");
+      digitalWrite(19, HIGH);
+    }
+    else if (messageTemp == "off")
+    {
+      Serial.println("off");
+      digitalWrite(19, LOW);
+    }
+  }
+}
+
+/*============= SUBSCRIBE =====================*/
+void mqtt_mysubscribe(char *topic) {
+  /*
+   * Subscribe to a MQTT topic 
+   */
+  while (!client.connected()) { // Loop until we're reconnected
+
+    Serial.print("Attempting MQTT connection...");
+    // Attempt to connect => https://pubsubclient.knolleary.net/api
+    if (client.connect("esp32", /* Client Id when connecting to the server */
+		                    "user",    /* No credential */ 
+		                    "chiasse")) {
+      Serial.println("connected");
+      // then Subscribe topic
+      client.subscribe(topic);
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      
+      Serial.println(" try again in 5 seconds");
+      delay(5000); // Wait 5 seconds before retrying
+    }
+  }
+}
+
+/*------------------------*/
+void connect_wifi(){
+ //  Set WiFi to station mode 
+ WiFi.mode(WIFI_STA);
+ // and disconnect from an AP if
+ // it was previously connected
+ WiFi.disconnect();
+ delay(100); // ms
+
+ Serial.println(String("\nAttempting to connect to SSIDs : "));
+ wifiMulti.addAP("HUAWEI-6EC2", "FGY9MLBL");
+ wifiMulti.addAP("HUAWEI-553A", "QTM06RTT");
+ wifiMulti.addAP("NIQUE TA MERE RIOT GAMES", "petitesalope");
+ while(wifiMulti.run() != WL_CONNECTED) {
+   delay(1000);
+   Serial.print(".");
+ }
+
+ if(wifiMulti.run() == WL_CONNECTED) {
+   Serial.print("\nWiFi connected : \n");
+  }
+}
+
+void callback_fn(){
+
 }
