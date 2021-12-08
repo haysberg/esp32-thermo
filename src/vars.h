@@ -31,7 +31,7 @@ const char *password = "petitesalope";
 
 String MONITOR_IP = "";
 String MONITOR_PORT = "1880";
-int MONITOR_SP = 2;
+int MONITOR_SP = 1;
 
 AsyncWebServer server(80);
 
@@ -43,8 +43,8 @@ char *identifier_esp = "esp_n1";
 const char* mqtt_server = "home.haysberg.io"; 
 
 /*===== MQTT TOPICS ===============*/
-#define TOPIC_TEMP "my/sensors/temp"
-#define TOPIC_LED  "my/sensors/led"
+#define TOPIC_TEMP "temperature"
+#define TOPIC_LED  "control"
 #define TOPIC_JSON "json"
 
 /*===== ESP is MQTT Client =======*/

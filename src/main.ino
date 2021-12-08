@@ -36,13 +36,14 @@ void setup(void)
   
   // set server of our client
   client.setServer(mqtt_server, 1883);
-  // set callback when publishes arrive for the subscribed topic
-  client.setCallback(mqtt_pubcallback); 
   // char* monitor_topic = (identifier_esp).c_str();
   //mqtt_pubcallback(identifier_esp);
   client.connect("esp32", "user", "chiasse");
   client.setBufferSize(2048);
-  mqtt_mysubscribe((char *)(identifier_esp));
+  //mqtt_mysubscribe((char *)(TOPIC_LED));
+  client.subscribe(TOPIC_LED);
+  // set callback when publishes arrive for the subscribed topic
+  client.setCallback(mqtt_pubcallback); 
 }
 
 void loop(void)
